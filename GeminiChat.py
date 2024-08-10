@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, render_template, request, session
 import google.generativeai as genai
 from api import Gemini_API_KEY as api
-
+import pandas as pd
 
 
 genai.configure(api_key=api)
@@ -11,10 +11,34 @@ app = Flask(__name__)
 
 model = genai.GenerativeModel('gemini-pro')
 chat = model.start_chat(history=[])
-chat.send_message('Remember you are a teacher assistant named Ammy now. If user ask who are you, \
-                  please answer as Ammy')
+prompt = """
+Your task now is to classify comments as Positive, Negative, or Neutral. 
+
+The data you will work with is a single string read from a CSV file. Each comment in the string is separated by a semi-colon ';'. 
+
+Please classify each comment according to the following criteria:
+- Positive: The comment expresses satisfaction, approval, or a positive sentiment.
+- Negative: The comment expresses dissatisfaction, disapproval, or a negative sentiment.
+- Neutral: The comment is neither positive nor negative, and does not express a strong sentiment.
+
+Here is the example data string: The product is amazing, I am very satisfied!;
+ Customer service was terrible, I am very disappointed.; The product is okay, nothing special.;
+ I am very pleased with the quality of the product.;
+ Delivery was slow and I couldn’t track the order.; Everything is fine, no complaints.
+
+Please provide your classification for each comment in the format:
+- [{Comment 1: Setiment 1}, {Comment 2: Setiment 2}, ... ]
+
+Thank you!
+"""
+chat.send_message(prompt)
 
 chat_history = []
+
+def read_data(path):
+    df = pd.read_csv('data/comments.csv')
+    all_comments = '; '.join(df['Comment'])
+    return all_comments
 
 @app.route('/')
 def index():
@@ -24,11 +48,17 @@ def index():
 def chat_endpoint():
     try:
         user_input = request.json.get('user_input')
+        print(user_input)
+        if user_input.endswith(".csv"):
+            data = read_data(user_input)
+            response = chat.send_message(data)
+            chat_history.append({"user": user_input, "bot": response.text})
 
-        if user_input:
+            return jsonify({"response": response.text})
+        elif user_input:
             response = chat.send_message(user_input)
             chat_history.append({"user": user_input, "bot": response.text})
-            print(request.json)
+
             return jsonify({"response": response.text})
         else:
             return jsonify({"error": "No user input provided."}), 400

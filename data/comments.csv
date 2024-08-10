@@ -1,0 +1,7 @@
+Comment,Sentiment
+"The product is amazing, I am very satisfied!",Positive
+"Customer service was terrible, I am very disappointed.",Negative
+"The product is okay, nothing special.",Neutral
+I am very pleased with the quality of the product.,Positive
+Delivery was slow and I couldn’t track the order.,Negative
+"Everything is fine, no complaints.",Neutral
