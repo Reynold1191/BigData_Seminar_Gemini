@@ -3,7 +3,7 @@ from flask import Flask, jsonify, render_template, request, session
 
 
 app = Flask(__name__)
-# client = OpenAI()
+client = OpenAI(api_key="")
 
 def format_message(role, content):
     return {"role": role, "content": content}
