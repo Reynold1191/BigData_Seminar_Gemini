@@ -1,16 +1,17 @@
-from flask import Flask, jsonify, render_template, request, session
-import google.generativeai as genai
-from api import Gemini_API_KEY as api
 import pandas as pd
-
 import utils
+import google.generativeai as genai
+
+from flask import Flask, jsonify, render_template, request, session
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
-genai.configure(api_key=api)
-
+genai.configure()
 app = Flask(__name__)
 
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel("gemini-pro")
 chat = model.start_chat(history=[])
 prompt = """
 Your task now is to classify comments as Positive, Negative, or Neutral. 
@@ -27,8 +28,11 @@ Here is the example data string: The product is amazing, I am very satisfied!;
  I am very pleased with the quality of the product.;
  Delivery was slow and I couldn’t track the order.; Everything is fine, no complaints.
 
-Please provide your classification for each comment in the format:
-- [{Comment 1: Setiment 1}, {Comment 2: Setiment 2}, ... ]
+Please provide your classification for each comment in the format, keep it in one line only:
+[{Comment1: Setiment1}, {Comment2: Setiment2}, ... ]
+
+For example:
+[{The product is amazing, I am very satisfied!: Positive}, {Customer service was terrible, I am very disappointed.: Negative}]
 
 Thank you!
 """
@@ -36,23 +40,46 @@ chat.send_message(prompt)
 
 # chat_history = []
 
+safe = [
+    {
+        "category": "HARM_CATEGORY_HARASSMENT",
+        "threshold": "BLOCK_NONE",
+    },
+    {
+        "category": "HARM_CATEGORY_HATE_SPEECH",
+        "threshold": "BLOCK_NONE",
+    },
+    {
+        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "threshold": "BLOCK_NONE",
+    },
+    {
+        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+        "threshold": "BLOCK_NONE",
+    },
+]
 
-@app.route('/')
+
+@app.route("/")
 def index():
-    return render_template('chat.html', chat_history=[])
+    return render_template(
+        "chat.html", chat_history=[], name="Gemini", title="Sentiment Analysis"
+    )
 
-@app.route('/chat', methods=['POST'])
+
+@app.route("/chat", methods=["POST"])
 def chat_endpoint():
     try:
-        user_input = request.json.get('user_input')
+        user_input = request.json.get("user_input")
         print(user_input)
 
-
-        if (data := utils.read_fb_link(user_input)):
-            response = chat.send_message(data)
+        if data := utils.read_youtube_video_link(user_input):
+            response = chat.send_message(data, safety_settings=safe)
+            print(1)
+            print(response)
             formatted_response = utils.format_response(response.text)
 
-            return jsonify({"response": formatted_response, "type": "list"})        
+            return jsonify({"response": formatted_response, "type": "list"})
         elif user_input.endswith(".csv"):
             data = utils.read_csv(user_input)
 
@@ -61,12 +88,13 @@ def chat_endpoint():
 
             response = chat.send_message(data)
             formatted_response = utils.format_response(response.text)
+            print(response.text)
 
             return jsonify({"response": formatted_response, "type": "list"})
         elif user_input:
             response = chat.send_message(user_input)
             formatted_response = utils.format_response(response.text)
-            sentiment = formatted_response[0]['sentiment']
+            sentiment = formatted_response[0]["sentiment"]
 
             # chat_history.append({"user": user_input, "bot": response.text})
             return jsonify({"response": sentiment, "type": "single"})
@@ -75,6 +103,6 @@ def chat_endpoint():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
 
+if __name__ == "__main__":
+    app.run(port=5000)
