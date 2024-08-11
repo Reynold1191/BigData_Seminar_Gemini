@@ -1,0 +1,8 @@
+flask
+google-generativeai
+pandas
+openai
+gradio
+facebook-scraper
+lxml_html_clean
+browser_cookie3
